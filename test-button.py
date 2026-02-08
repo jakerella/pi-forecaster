@@ -6,7 +6,8 @@ button = DigitalInOut(board.D17)
 button.direction = Direction.INPUT
 button.pull = Pull.UP
 
+print("Waiting for button press...\n")
 while True:
     if not button.value:
         print("Button pressed")
-    time.sleep(0.25)
+    time.sleep(0.20)
