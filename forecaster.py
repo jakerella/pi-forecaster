@@ -21,6 +21,7 @@ button.pull = Pull.UP
 
 print("  initializing text-to-speech...")
 speechEngine = pyttsx3.init()
+speechEngine.setProperty('voice', "gmw/en-us-nyc")
 
 def start():
     setDotColor((0, 255, 0))
@@ -64,7 +65,7 @@ def getWeather(day="today"):
         print(data["forecast"])
         message = data["forecast"]
     else:
-        print(data["message"])
+        print("ERROR from forecast service (" + response.status_code + "): " + data["message"])
         message = data["message"]
 
     print("  voicing forecast...")
