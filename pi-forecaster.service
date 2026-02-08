@@ -1,0 +1,14 @@
+[Unit]
+Description=Weather forecasting service
+After=multi-user.target
+Requires=network.target
+
+[Service]
+Type=idle
+User=jordan
+ExecStart=source /home/jordan/env/bin/activate && /user/bin/python /home/jordan/pi-forecaster/forecaster.py
+Restart=on-success
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

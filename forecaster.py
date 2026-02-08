@@ -21,29 +21,32 @@ button.pull = Pull.UP
 
 print("  initializing text-to-speech...")
 speechEngine = pyttsx3.init()
-speechEngine.setProperty('voice', "gmw/en-us-nyc")
+speechEngine.setProperty("voice", "gmw/en-us-nyc")
 
 def start():
-    setDotColor((0, 255, 0))
-    print("  setup complete.\n")
-    print("Waiting for button press...\n")
-    btn_prev_state = button.value
-    btn_down_ts = 0
-    while True:
-        btn_state = button.value
-        if btn_state != btn_prev_state:
-            if not btn_state:
-                btn_down_ts = time.time()
-            else:
-                ts_diff = time.time() - btn_down_ts
-                print("  button held for " + str(ts_diff) + " seconds...")
-                day = "today"
-                if ts_diff > 1.5:
-                    day = "tomorrow"
-                getWeather(day)
-                setDotColor((0, 255, 0))
-                print("\nWaiting for button press...\n")
-        btn_prev_state = btn_state
+    try:
+        setDotColor((0, 255, 0))
+        print("  setup complete.\n")
+        print("Waiting for button press...\n")
+        btn_prev_state = button.value
+        btn_down_ts = 0
+        while True:
+            btn_state = button.value
+            if btn_state != btn_prev_state:
+                if not btn_state:
+                    btn_down_ts = time.time()
+                else:
+                    ts_diff = time.time() - btn_down_ts
+                    print("  button held for " + str(ts_diff) + " seconds...")
+                    day = "today"
+                    if ts_diff > 1.5:
+                        day = "tomorrow"
+                    getWeather(day)
+                    setDotColor((0, 255, 0))
+                    print("\nWaiting for button press...\n")
+            btn_prev_state = btn_state
+    finally:
+        setDotColor((255, 0, 0))
 
 
 def setDotColor(wheel):
@@ -53,7 +56,7 @@ def setDotColor(wheel):
 
 def getWeather(day="today"):
     print("  retrieving weather forecast for " + day + "...")
-    setDotColor((255, 0, 0))
+    setDotColor((255, 255, 0))
 
     response = requests.get(
         "https://jordankasper.com/.netlify/functions/getWeather?date=" + day,
@@ -68,7 +71,7 @@ def getWeather(day="today"):
         print("ERROR from forecast service (" + response.status_code + "): " + data["message"])
         message = data["message"]
 
-    print("  voicing forecast...")
+    print("  initiating voice playback...")
     setDotColor((0, 0, 255))
     speechEngine.say(message)
     speechEngine.runAndWait()
@@ -77,6 +80,7 @@ def getWeather(day="today"):
     time.sleep(1)
 
 
-#######
-start()
-#######
+########################
+if __name__=='__main__':
+    start()
+########################
