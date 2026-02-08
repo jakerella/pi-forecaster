@@ -68,7 +68,7 @@ def getWeather(day="today"):
         print(data["forecast"])
         message = data["forecast"]
     else:
-        print("ERROR from forecast service (" + response.status_code + "): " + data["message"])
+        print("ERROR from forecast service (" + str(response.status_code) + "): " + data["message"])
         message = data["message"]
 
     print("  initiating voice playback...")

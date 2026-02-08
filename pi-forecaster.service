@@ -6,7 +6,7 @@ Requires=network.target
 [Service]
 Type=idle
 User=jordan
-ExecStart=source /home/jordan/env/bin/activate && /user/bin/python /home/jordan/pi-forecaster/forecaster.py
+ExecStart=source /home/jordan/env/bin/python /home/jordan/pi-forecaster/forecaster.py
 Restart=on-success
 RestartSec=60
 
