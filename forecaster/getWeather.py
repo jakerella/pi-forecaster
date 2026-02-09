@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from google import genai
 from google.genai import types
+import wave
 import requests
 import base64
 import re
@@ -17,8 +18,10 @@ WEATHER_HISTORY_CACHE = os.path.join(CACHE_DIR, 'weather_historical.json')
 
 with open(os.path.join(os.path.dirname(__file__), 'weather-codes.json')) as f:
     WEATHER_CODES = json.load(f)
-with open(os.path.join(os.path.dirname(__file__), 'weather-instruction.txt')) as f:
-    AI_INSTRUCTION = f.read()
+with open(os.path.join(os.path.dirname(__file__), 'ai-forecast-instruction.txt')) as f:
+    AI_FORECAST_INSTRUCTION = f.read()
+with open(os.path.join(os.path.dirname(__file__), 'ai-voice-instruction.txt')) as f:
+    AI_VOICE_INSTRUCTION = f.read()
 
 DEFAULT_OPTIONS = {
     'date': 'today',
@@ -51,24 +54,6 @@ FIELD_MAP = {
 }
 
 
-def ensure_cache_dir():
-    os.makedirs(CACHE_DIR, exist_ok=True)
-
-
-def load_cache(cache_file):
-    ensure_cache_dir()
-    if os.path.exists(cache_file):
-        with open(cache_file, 'r') as f:
-            return json.load(f)
-    return {}
-
-
-def save_cache(cache_file, data):
-    ensure_cache_dir()
-    with open(cache_file, 'w') as f:
-        json.dump(data, f)
-
-
 def get_forecast_data(input_options: dict = None):
     """
     Call this function from other modules.
@@ -90,7 +75,8 @@ def get_forecast_data(input_options: dict = None):
     if forecast:
         print(f"Using cached forecast for {options['lat']}, {options['lng']} on {options['forecastDate']}")
         return {
-            'forecast': forecast,
+            'forecast': forecast['text'],
+            'audioFile': forecast['audio_file'],
             'forecastDate': forecast_simple_date,
             'weatherData': None,
             'options': {k: v for k, v in options.items() if k not in ['forecastDate', 'now']}
@@ -107,11 +93,30 @@ def get_forecast_data(input_options: dict = None):
     forecast = get_forecast(options, weather_data)
 
     return {
-        'forecast': forecast,
+        'forecast': forecast['text'],
+        'audioFile': forecast['audio_file'],
         'forecastDate': forecast_simple_date,
         'weatherData': weather_data,
         'options': {k: v for k, v in options.items() if k not in ['forecastDate', 'now']}
     }
+
+
+def ensure_cache_dir():
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+def load_cache(cache_file):
+    ensure_cache_dir()
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def save_cache(cache_file, data):
+    ensure_cache_dir()
+    with open(cache_file, 'w') as f:
+        json.dump(data, f)
 
 
 def parse_input_and_validate(input_dict: dict):
@@ -173,7 +178,10 @@ def get_cached_forecast(options):
             coord in forecast_cache[forecast_simple_date] and 
             int(datetime.now().timestamp()) <= forecast_cache[forecast_simple_date][coord]['exp']
             ):
-            forecast = forecast_cache[forecast_simple_date][coord]['txt']
+            forecast = {
+                'text': forecast_cache[forecast_simple_date][coord]['txt'],
+                'audio_file': forecast_cache[forecast_simple_date][coord]['wav']
+            }
 
     return forecast
 
@@ -294,6 +302,7 @@ def get_weather_data(options):
 
 def get_forecast(options, data):
     forecast_date_simple = options['forecastDate'].strftime('%Y-%m-%d')
+    coord = f"{options['lat']}_{options['lng']}"
     prompt = 'Generate a weather forecast'
 
     if forecast_date_simple == options['now'].strftime('%Y-%m-%d'):
@@ -306,18 +315,35 @@ def get_forecast(options, data):
     print(f'Generating a weather forecast using prompt:\n{prompt}')
 
     client = genai.Client(api_key=os.getenv('GEN_AI_KEY'))
-    response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=[
+
+    forecastResponse = client.models.generate_content(
+        model = "gemini-3-flash-preview",
+        contents = [
             {'text': prompt},
             {'inlineData': {'data': base64.b64encode(json.dumps(data).encode()).decode(), 'mimeType': 'application/json'}}
         ],
-        config=types.GenerateContentConfig(system_instruction=AI_INSTRUCTION),
+        config = types.GenerateContentConfig(system_instruction=AI_FORECAST_INSTRUCTION),
     )
-    forecast = response.text
+    forecast = forecastResponse.text
+
+    voiceResponse = client.models.generate_content(
+        model = "gemini-2.5-flash-preview-tts",
+        contents = AI_VOICE_INSTRUCTION + "\n" + forecast,
+        config = types.GenerateContentConfig(
+            response_modalities = ["AUDIO"],
+            speech_config = types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config = types.PrebuiltVoiceConfig(voice_name = 'Erinome')
+                )
+            )
+        )
+    )
+
+    wave_filename = os.path.join(CACHE_DIR, f"{forecast_date_simple}_{coord}.wav")
+    voiceData = voiceResponse.candidates[0].content.parts[0].inline_data.data
+    create_wave_file(wave_filename, voiceData)
 
     forecast_cache = load_cache(WEATHER_FORECAST_CACHE)
-    coord = f"{options['lat']}_{options['lng']}"
     print(f"Caching forecast data for location {coord} on {forecast_date_simple}")
 
     if forecast_date_simple not in forecast_cache:
@@ -325,8 +351,19 @@ def get_forecast(options, data):
 
     forecast_cache[forecast_date_simple][coord] = {
         'exp': int(datetime.now().timestamp()) + FORECAST_TTL,
-        'txt': forecast
+        'txt': forecast,
+        'wav': wave_filename
     }
     save_cache(WEATHER_FORECAST_CACHE, forecast_cache)
 
-    return forecast
+    return { 'text': forecast, 'audio_file': wave_filename }
+
+
+def create_wave_file(filename, data, channels=1, rate=24000, sample_width=2):
+    ensure_cache_dir()
+    with wave.open(filename, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(rate)
+        wf.writeframes(data)
+

@@ -24,8 +24,9 @@ set_dot_color(COLOR_NOT_READY)
 
 print("  importing other libraries...")
 import time
-import pyttsx3
+# import pyttsx3
 from getWeather import get_forecast_data
+import subprocess
 
 
 print("  setting up button...")
@@ -33,9 +34,12 @@ button = DigitalInOut(board.D17)
 button.direction = Direction.INPUT
 button.pull = Pull.UP
 
-print("  initializing text-to-speech...")
-speechEngine = pyttsx3.init()
-speechEngine.setProperty("voice", "gmw/en-us-nyc")
+CACHE_DIR = os.path.join(os.path.dirname(__file__), '.cache')
+PROBLEM_AUDIO_FILE = os.path.join(os.path.dirname(__file__), 'problem.wav')
+
+# print("  initializing text-to-speech...")
+# speechEngine = pyttsx3.init()
+# speechEngine.setProperty("voice", "gmw/en-us-nyc")
 
 def start():
     try:
@@ -68,20 +72,25 @@ def get_weather(day="today"):
     print("  retrieving weather forecast for " + day + "...")
     set_dot_color(COLOR_WORKING)
 
-    message = "Unable to retrieve forecast for " + day
+    forecast_text = None
+    audio_file = PROBLEM_AUDIO_FILE
     try:
         data = get_forecast_data({ 'date': day })
-        message = data.get("forecast", "No forecast was available for " + day)
+        forecast_text = data['forecast']
+        audio_file = os.path.join(CACHE_DIR, data['audioFile'])
     except Exception as e:
         print("  ERROR retrieving forecast: " + str(e))
-        message = "Unable to retrieve forecast for " + day
+        audio_file = PROBLEM_AUDIO_FILE
 
     print("  initiating voice playback of message...")
-    print("  " + message)
+    print("  " + forecast_text)
     set_dot_color(COLOR_TALKING)
-    speechEngine.say(message)
-    speechEngine.runAndWait()
-    speechEngine.stop()
+    
+    subprocess.run(['aplay', audio_file])
+    # speechEngine.say(message)
+    # speechEngine.runAndWait()
+    # speechEngine.stop()
+
     print("  complete.")
     time.sleep(1)
 
