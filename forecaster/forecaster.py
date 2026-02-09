@@ -1,18 +1,34 @@
-import time
+
+print("\nStarting Pi-Forecaster...")
+print("  setting up LEDs...")
+
 import board
 from digitalio import DigitalInOut, Direction, Pull
 import adafruit_dotstar
+
+COLOR_OFF = (0, 0, 0, 0)
+COLOR_WAITING = (0, 2, 0, 0.1)
+COLOR_NOT_READY = (30, 0, 0, 0.1)
+COLOR_WORKING = (50, 50, 0, 0.3)
+COLOR_TALKING = (0, 0, 50, 0.3)
+DOTSTAR_DATA = board.D5
+DOTSTAR_CLOCK = board.D6
+DOTSTAR_COUNT = 3
+dots = adafruit_dotstar.DotStar(DOTSTAR_CLOCK, DOTSTAR_DATA, DOTSTAR_COUNT)
+
+def set_dot_color(color):
+    for i in range(DOTSTAR_COUNT):
+        dots[i] = color
+
+set_dot_color(COLOR_NOT_READY)
+
+print("  importing other libraries...")
+import time
 import pyttsx3
 from getWeather import get_forecast_data
 
-print("\nStarting Pi-Forecaster...")
 
-print("  getting LED dots...")
-DOTSTAR_DATA = board.D5
-DOTSTAR_CLOCK = board.D6
-dots = adafruit_dotstar.DotStar(DOTSTAR_CLOCK, DOTSTAR_DATA, 3, brightness=0.01)
-
-print("  getting button...")
+print("  setting up button...")
 button = DigitalInOut(board.D17)
 button.direction = Direction.INPUT
 button.pull = Pull.UP
@@ -23,7 +39,7 @@ speechEngine.setProperty("voice", "gmw/en-us-nyc")
 
 def start():
     try:
-        set_dot_color((0, 255, 0))
+        set_dot_color(COLOR_WAITING)
         print("  setup complete.\n")
         print("Waiting for button press...\n")
         btn_prev_state = button.value
@@ -40,22 +56,17 @@ def start():
                     if ts_diff > 1.5:
                         day = "tomorrow"
                     get_weather(day)
-                    set_dot_color((0, 255, 0))
+                    set_dot_color(COLOR_WAITING)
                     print("\nWaiting for button press...\n")
             btn_prev_state = btn_state
     finally:
-        print("Shitting down forecaster...")
-        set_dot_color((255, 0, 0))
-
-
-def set_dot_color(wheel):
-    for i in range(len(dots)):
-        dots[i] = wheel
+        print("Shutting down forecaster...")
+        set_dot_color(COLOR_OFF)
 
 
 def get_weather(day="today"):
     print("  retrieving weather forecast for " + day + "...")
-    set_dot_color((255, 255, 0))
+    set_dot_color(COLOR_WORKING)
 
     message = "Unable to retrieve forecast for " + day
     try:
@@ -67,7 +78,7 @@ def get_weather(day="today"):
 
     print("  initiating voice playback of message...")
     print("  " + message)
-    set_dot_color((0, 0, 255))
+    set_dot_color(COLOR_TALKING)
     speechEngine.say(message)
     speechEngine.runAndWait()
     speechEngine.stop()
@@ -75,7 +86,7 @@ def get_weather(day="today"):
     time.sleep(1)
 
 
-########################
-if __name__=='__main__':
+##########################
+if __name__ == '__main__':
     start()
-########################
+##########################
