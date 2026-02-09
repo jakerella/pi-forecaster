@@ -7,9 +7,9 @@ from digitalio import DigitalInOut, Direction, Pull
 import adafruit_dotstar
 
 COLOR_OFF = (0, 0, 0, 0)
-COLOR_WAITING = (0, 2, 0, 0.1)
+COLOR_WAITING = (0, 1, 0, 0.05)
 COLOR_NOT_READY = (30, 0, 0, 0.1)
-COLOR_WORKING = (50, 50, 0, 0.3)
+COLOR_WORKING = (40, 15, 0, 0.2)
 COLOR_TALKING = (0, 0, 50, 0.3)
 DOTSTAR_DATA = board.D5
 DOTSTAR_CLOCK = board.D6
@@ -24,7 +24,7 @@ set_dot_color(COLOR_NOT_READY)
 
 print("  importing other libraries...")
 import time
-# import pyttsx3
+import os
 from getWeather import get_forecast_data
 import subprocess
 
@@ -37,9 +37,6 @@ button.pull = Pull.UP
 CACHE_DIR = os.path.join(os.path.dirname(__file__), '.cache')
 PROBLEM_AUDIO_FILE = os.path.join(os.path.dirname(__file__), 'problem.wav')
 
-# print("  initializing text-to-speech...")
-# speechEngine = pyttsx3.init()
-# speechEngine.setProperty("voice", "gmw/en-us-nyc")
 
 def start():
     try:
@@ -87,9 +84,6 @@ def get_weather(day="today"):
     set_dot_color(COLOR_TALKING)
     
     subprocess.run(['aplay', audio_file])
-    # speechEngine.say(message)
-    # speechEngine.runAndWait()
-    # speechEngine.stop()
 
     print("  complete.")
     time.sleep(1)
