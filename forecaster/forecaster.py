@@ -3,9 +3,7 @@ import board
 from digitalio import DigitalInOut, Direction, Pull
 import adafruit_dotstar
 import pyttsx3
-import os
-import time
-import requests
+from getWeather import get_forecast_data
 
 print("\nStarting Pi-Forecaster...")
 
@@ -25,7 +23,7 @@ speechEngine.setProperty("voice", "gmw/en-us-nyc")
 
 def start():
     try:
-        setDotColor((0, 255, 0))
+        set_dot_color((0, 255, 0))
         print("  setup complete.\n")
         print("Waiting for button press...\n")
         btn_prev_state = button.value
@@ -41,38 +39,35 @@ def start():
                     day = "today"
                     if ts_diff > 1.5:
                         day = "tomorrow"
-                    getWeather(day)
-                    setDotColor((0, 255, 0))
+                    get_weather(day)
+                    set_dot_color((0, 255, 0))
                     print("\nWaiting for button press...\n")
             btn_prev_state = btn_state
     finally:
-        setDotColor((255, 0, 0))
+        print("Shitting down forecaster...")
+        set_dot_color((255, 0, 0))
 
 
-def setDotColor(wheel):
+def set_dot_color(wheel):
     for i in range(len(dots)):
         dots[i] = wheel
 
 
-def getWeather(day="today"):
+def get_weather(day="today"):
     print("  retrieving weather forecast for " + day + "...")
-    setDotColor((255, 255, 0))
+    set_dot_color((255, 255, 0))
 
-    response = requests.get(
-        "https://jordankasper.com/.netlify/functions/getWeather?date=" + day,
-        headers = { "Authorization": os.getenv("WEATHER_KEY", None) }
-    )
-    data = response.json()
-    message = "No forecast available for " + day
-    if response.status_code == 200:
-        print(data["forecast"])
-        message = data["forecast"]
-    else:
-        print("ERROR from forecast service (" + str(response.status_code) + "): " + data["message"])
-        message = data["message"]
+    message = "Unable to retrieve forecast for " + day
+    try:
+        data = get_forecast_data({ 'date': day })
+        message = data.get("forecast", "No forecast was available for " + day)
+    except Exception as e:
+        print("  ERROR retrieving forecast: " + str(e))
+        message = "Unable to retrieve forecast for " + day
 
-    print("  initiating voice playback...")
-    setDotColor((0, 0, 255))
+    print("  initiating voice playback of message...")
+    print("  " + message)
+    set_dot_color((0, 0, 255))
     speechEngine.say(message)
     speechEngine.runAndWait()
     speechEngine.stop()

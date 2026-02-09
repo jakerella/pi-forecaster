@@ -1,0 +1,7 @@
+adafruit-python-shell
+adafruit-blinka
+adafruit-circuitpython-dotstar
+pytz
+dotenv
+google-genai
+pyaudio

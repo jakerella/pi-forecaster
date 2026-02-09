@@ -6,9 +6,12 @@ Requires=network.target
 [Service]
 Type=idle
 User=jordan
-Environment="WEATHER_KEY=[INSERT KEY]"
-ExecStart=source /home/jordan/env/bin/python /home/jordan/pi-forecaster/forecaster.py
-Restart=on-success
+Environment="GEN_AI_KEY=[INSERT KEY]"
+# WorkingDirectory=/home/jordan/pi-forecaster
+# ExecStartPre=/usr/bin/git pull
+# ExecStart=/home/jordan/env/bin/python /home/jordan/pi-forecaster/forecaster.py
+ExecStart=/usr/bin/bash /home/jordan/pi-forecaster/start.sh
+Restart=always
 RestartSec=60
 
 [Install]
